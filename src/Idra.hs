@@ -8,7 +8,6 @@ module Idra (
 , Input
 , endGame
 , liftGame
-, message'
 , message
 , systemMessage
 , action
@@ -81,13 +80,9 @@ liftIdra ma = Idra $ Just <$> ma
 liftGame :: IO a -> Game s a
 liftGame = idraToGame . liftIdra
 
--- Same line message
-message' :: Message -> Game s ()
-message' m = liftGame $ putStr m
-
 -- Prints message
 message :: Message -> Game s ()
-message m = message' (m ++ "\n")
+message m = liftGame $ putStrLn m
 
 -- Prints system message, not in narrative
 systemMessage :: Message -> Game s ()
