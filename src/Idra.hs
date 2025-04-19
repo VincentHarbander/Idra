@@ -1,15 +1,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Idra (
-  Idra
-, Game
+  Game
 , Action
 , Options
 , Message
 , Input
 , endGame
-, idraToGame
-, liftIdra
 , liftGame
 , message'
 , message
