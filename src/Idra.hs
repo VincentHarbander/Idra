@@ -1,11 +1,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
+-- | A composable, monadic and ergonomic EDSL for text RPG games in Haskell
 module Idra (
-  Game
+  MonadIdra
+, Game
 , Action
 , Options
 , Message
 , Input
+, IdraException
 , endGame
 , liftGame
 , message
@@ -30,12 +33,26 @@ import Text.Read (readMaybe)
 import Test.QuickCheck (Gen, generate)
 
 newtype Idra a = Idra {unIdra :: IO (Maybe a)}
+-- | The monad of the module. Represents a game with game state of type s
+-- and produces a value of type a. It is a member of MonadState s.
+-- It is recommended that you use a record type for s where you store
+-- global information about your game such as the player's inventory,
+-- health and gold. It is not recommended that you store location or
+-- scene states in s. Use calls to other Game values for this.
 newtype Game s a = Game (StateT s Idra a) deriving (Functor, Applicative, Monad, MonadState s)
+-- | An Action is a message describing the action a player takes
+-- and the resulting Game action.
 data Action s a = Action {getMessage :: Message, getGame :: Game s a}
+-- | An Option is a list of possible Actions a player can choose from.
 type Options s a = [Action s a]
 
+-- | A Message is a String that the game displays to the player. It exists to make type declarations more informative in terms of intention.
 type Message = String
+-- | An Input is a String that the user entered into the game. It exists to make type declarations more informative in terms of intention.
 type Input = String
+-- | IdraException is a type produced by loadGame. It can either communicate
+-- a parse failure of the loaded savefile or an IOException arising
+-- from trying to access the file.
 data IdraException = ParseFailure | IOExc IOException
 
 instance Functor Idra where
@@ -53,7 +70,9 @@ instance Monad Idra where
       Nothing -> return Nothing
       Just a  -> unIdra $ f a
 
+-- | MonadIdra provides the service of ending the game. It is not defined exclusively for Game since one may want to use it in a monad transformer.
 class MonadIdra f where
+  -- | Ends the game as soon as this action is reached, skips all following actions. WARNING: Should permanently hang if one has sequenced an infinite number of actions after, but no sensible reason to do this has been found.
   endGame :: f ()
 
 instance MonadIdra Idra where
@@ -76,15 +95,16 @@ idraToGame = Game . lift
 liftIdra :: IO a -> Idra a
 liftIdra ma = Idra $ Just <$> ma
 
--- Lifting IO to Game
+-- | Lifting IO to Game
 liftGame :: IO a -> Game s a
 liftGame = idraToGame . liftIdra
 
--- Prints message
+-- | Prints a message
 message :: Message -> Game s ()
 message m = liftGame $ putStrLn m
 
--- Prints system message, not in narrative
+-- | Prints a system message, not "in narrative", but gives information to the player.
+-- A Message "Test!" is displayed as "-- Test! --".
 systemMessage :: Message -> Game s ()
 systemMessage m = message $ "-- " ++ m ++ " --"
 
@@ -110,11 +130,12 @@ readChoice = liftGame $ do
   raw <- getLine
   return $ readMaybe raw
 
--- Create an action
+-- | Creates an action
 action :: Message -> Game s a -> Action s a
 action m g = Action {getMessage=m, getGame=g}
 
--- Turn options into a Game by showing the options and asking the user for an answer until they respond with a valid answer
+-- | Turns Options into a Game by showing the options
+-- and asking the user for an answer until they respond with a valid answer
 options :: Options s a -> Game s a
 options opts = let n = length opts in do
   printOptions opts
@@ -123,14 +144,16 @@ options opts = let n = length opts in do
     Nothing -> invalidOptionInt >> options opts
     Just v -> if inRange 1 v n then getGame (opts !! (v-1)) else invalidOptionRange n >> options opts
 
--- Read the user's input
+-- | Read the user's input
 input :: Game s String
 input = liftGame getLine
 
--- Takes a helper function that communicates what is wrong with the input message if it is.
--- If the input message is valid, it will return the empty string
--- The function interactively asks the user for input and provides feedback until the error message is empty
--- It then returns the user's valid answer
+-- | Takes a helper function that communicates what is wrong with
+-- the input message (if something is wrong).
+-- If the input message is valid, the helper function should return the empty string.
+-- The function validInput interactively asks the user for input
+-- and provides feedback until the error message from the helper function is empty.
+-- It then returns the user's valid answer.
 validInput :: (Input -> Message) -> Game s String
 validInput helper = do
   raw <- input
@@ -139,10 +162,10 @@ validInput helper = do
     ""  -> return raw
     err -> systemMessage err >> validInput helper
 
--- The GameState s and extra string is saved
--- The extra string can be used to identify position in the game that was saved or additional information not included in the GameState
--- Returning Right () means a successful save, otherwise a Left IOException is returned
--- Either is used instead of Maybe for consistency with loadGame
+-- | The game state s and extra string is saved
+-- The extra string can be used to identify position in the game that was saved or additional information not included in the game state.
+-- Returning Right () means a successful save, otherwise a Left IOException is returned.
+-- Either is used instead of Maybe for consistency with loadGame.
 saveGame :: Show s => FilePath -> String -> Game s (Either IOException ())
 saveGame path info = do
   gameState <- get
@@ -152,9 +175,9 @@ saveGame path info = do
     Left err -> return $ Left err
     Right () -> return $ Right ()
 
--- Loads a game. GameState is updated according to the load Game and additional String information is returned if the read was successful
--- If the load fails through a file error, an IOException as an IdraException will be returned
--- If the load fails through parsing the file content, the IdraException ParseFailure will be returned
+-- | Loads a game. Game state is updated to the loaded game state and additional String information is returned if the read was successful.
+-- If the load fails through a file error, an IOException as an IdraException will be returned.
+-- If the load fails through parsing the file content, the IdraException ParseFailure will be returned.
 loadGame :: Read s => FilePath -> Game s (Either IdraException String)
 loadGame path = do
   res <- liftGame $ tryIO $ readFile path :: Game s (Either IOException String)
@@ -166,11 +189,11 @@ loadGame path = do
         put gameState
         return $ Right info
 
--- Use a QuickCheck generator
+-- | Lift a QuickCheck generator to Game. Uses QuickCheck's generate in its definition.
 genGame :: Gen a -> Game s a
 genGame g = liftGame $ generate g
 
--- Run Game with a starting game state
+-- | Run a Game with a starting game state. This is how you actually play your game!
 runGame :: s -> Game s () -> IO ()
 runGame s (Game g) = void m
   where Idra m = evalStateT g s
