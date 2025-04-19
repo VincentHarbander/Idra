@@ -23,6 +23,8 @@ module Idra (
 , runGame
 ) where
 
+import Data.ByteString.Char8 (pack, unpack)
+import Data.ByteString.Base64 (encode, decode)
 import Control.Monad (ap)
 import Data.Functor (void)
 import GHC.Utils.Exception (IOException, tryIO)
@@ -83,6 +85,13 @@ instance MonadIdra (Game s) where
 
 inRange :: (Ord a) => a -> a -> a -> Bool
 inRange b v t = b <= v && v <= t
+
+-- Base 64 encoding functions for strings
+encode' :: String -> String
+encode' = unpack . encode . pack
+
+decode' :: String -> Either String String
+decode' s = fmap unpack $ decode $ pack s
 
 nats :: [Int]
 nats = [1,2..]
@@ -165,12 +174,12 @@ validInput helper = do
 -- | The game state s and extra string is saved
 -- The extra string can be used to identify position in the game that was saved or additional information not included in the game state.
 -- Returning Right () means a successful save, otherwise a Left IOException is returned.
--- Either is used instead of Maybe for consistency with loadGame.
+-- Either is used instead of Maybe for consistency with loadGame. The base 64 conversion is not meant to be a safe encryption, but simply not let the savefile be in plaintext for a player to read.
 saveGame :: Show s => FilePath -> String -> Game s (Either IOException ())
 saveGame path info = do
   gameState <- get
   let save = (info,gameState)
-  output <- liftGame $ tryIO $ writeFile path (show save)
+  output <- liftGame $ tryIO $ writeFile path $ encode' $ show save
   case output of
     Left err -> return $ Left err
     Right () -> return $ Right ()
@@ -183,11 +192,13 @@ loadGame path = do
   res <- liftGame $ tryIO $ readFile path :: Game s (Either IOException String)
   case res of
     Left err  -> return $ Left $ IOExc err
-    Right str -> case readMaybe str of
-      Nothing               -> return $ Left ParseFailure
-      Just (info,gameState) -> do
-        put gameState
-        return $ Right info
+    Right str -> case decode' str of
+      Left _        -> return $ Left ParseFailure
+      Right decoded -> case readMaybe decoded of
+        Nothing               -> return $ Left ParseFailure
+        Just (info,gameState) -> do
+          put gameState
+          return $ Right info
 
 -- | Lift a QuickCheck generator to Game. Uses QuickCheck's generate in its definition.
 genGame :: Gen a -> Game s a
