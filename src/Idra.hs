@@ -36,7 +36,7 @@ import Test.QuickCheck (Gen, generate)
 
 newtype Idra a = Idra {unIdra :: IO (Maybe a)}
 -- | The monad of the module. Represents a game with game state of type s
--- and produces a value of type a. It is a member of MonadState s.
+-- that produces a value of type a. It is a member of MonadState s.
 -- It is recommended that you use a record type for s where you store
 -- global information about your game such as the player's inventory,
 -- health and gold. It is not recommended that you store location or
@@ -200,7 +200,7 @@ loadGame path = do
           put gameState
           return $ Right info
 
--- | Lift a QuickCheck generator to Game. Uses QuickCheck's generate in its definition.
+-- | Lifts a QuickCheck generator to Game. Uses QuickCheck's generate in its definition.
 genGame :: Gen a -> Game s a
 genGame g = liftGame $ generate g
 
