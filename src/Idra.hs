@@ -19,6 +19,8 @@ module Idra (
 , input
 , validInput
 , validInputM
+, validParse
+, validParseM
 , saveGame
 , loadGame
 , genGame
@@ -205,6 +207,23 @@ validInputM helper = do
   case errorMsg of
     "" -> return raw
     err -> systemMessage err >> validInputM helper
+
+-- | Does the same thing as validInput, but can produce values of arbitrary types.
+-- A Left value from the helper function means the user's input failed validation
+-- and provides an error message. A Right value is the value associated with a
+-- successful parse.
+validParse :: (Input -> Either Message a) -> Game s a
+validParse helper = validParseM (return . helper)
+
+-- | This is to validParse what validInputM is to validInput.
+validParseM :: (Input -> Game s (Either Message a)) -> Game s a
+validParseM helper = do
+  raw <- input
+  res <- helper raw
+  case res of
+    Right v  -> return v
+    Left msg -> systemMessage msg >> validParseM helper
+  
 
 -- | The game state s and extra string is saved
 -- The extra string can be used to identify position in the game that
