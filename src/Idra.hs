@@ -17,6 +17,7 @@ module Idra (
 , options
 , input
 , validInput
+, validInputM
 , saveGame
 , loadGame
 , genGame
