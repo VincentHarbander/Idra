@@ -110,7 +110,7 @@ encode' :: String -> String
 encode' = unpack . encode . pack
 
 decode' :: String -> Either String String
-decode' s = fmap unpack $ decode $ pack s
+decode' = fmap unpack . decode . pack
 
 nats :: [Int]
 nats = [1,2..]
