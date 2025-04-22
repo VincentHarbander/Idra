@@ -11,6 +11,7 @@ module Idra (
 , IdraException
 , endGame
 , liftGame
+, message'
 , message
 , systemMessage
 , action
@@ -126,9 +127,15 @@ liftIdra ma = Idra $ Just <$> ma
 liftGame :: IO a -> Game s a
 liftGame = idraToGame . liftIdra
 
+-- | Prints a message without a new line after.
+-- Does not appear until the user has entered their
+-- input unless a message producing a newline comes after.
+message' :: Message -> Game s ()
+message' = liftGame . putStr
+
 -- | Prints a message
 message :: Message -> Game s ()
-message m = liftGame $ putStrLn m
+message = liftGame . putStrLn
 
 -- | Prints a system message, not "in narrative",
 -- but gives information to the player.
