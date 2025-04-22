@@ -161,9 +161,7 @@ printOptions opts = message optionText
 
 -- Try to read the user's choice
 readChoice :: Game s (Maybe Int)
-readChoice = liftGame $ do
-  raw <- getLine
-  return $ readMaybe raw
+readChoice = liftGame $ readMaybe <$> getLine
 
 -- | Creates an action
 action :: Message -> Game s a -> Action s a
