@@ -16,6 +16,7 @@ module Idra (
 , systemMessage
 , action
 , options
+, optionsUsing
 , input
 , validInput
 , validInputM
@@ -172,15 +173,22 @@ action m g = Action {getMessage=m, getGame=g}
 -- | Turns Options into a Game by showing the options
 -- and asking the user for an answer until they respond with a valid answer
 options :: Options s a -> Game s a
-options opts = let n = length opts in do
+options = optionsUsing invalidOptionRange invalidOptionInt
+
+-- | Creates an options function given an invalidOptionsRange function
+-- that takes an integer and tells the user that options can only be
+-- between 1 and the integer and an invalidOptionInt that informs the
+-- user that the input should be an integer.
+optionsUsing :: (Int -> Game s ()) -> Game s () -> Options s a -> Game s a
+optionsUsing invRange invInt opts = let n = length opts in do
   printOptions opts
   raw <- readChoice
   case raw of
-    Nothing -> invalidOptionInt >> options opts
+    Nothing -> invInt >> options opts
     Just v -> if inRange 1 v n then
                 getGame (opts !! (v-1))
               else
-                invalidOptionRange n >> options opts
+                invRange n >> options opts
 
 -- | Read the user's input
 input :: Game s String
