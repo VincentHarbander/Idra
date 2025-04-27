@@ -188,7 +188,7 @@ optionsUsing invRange invInt opts = let n = length opts in do
   printOptions opts
   raw <- readChoice
   case raw of
-    Nothing -> invInt >> options opts
+    Nothing -> invInt >> optionsUsing invRange invInt opts
     Just v  -> if inRange 1 v n then
                 getGame (opts !! (v-1))
               else
