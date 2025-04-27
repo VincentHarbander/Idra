@@ -83,7 +83,6 @@ instance Monad Idra where
       Nothing -> return Nothing
       Just a  -> unIdra $ f a
 
-
 instance Semigroup a => Semigroup (Game s a) where
   (<>) = liftA2 (<>)
 
@@ -166,7 +165,7 @@ printOptions opts = message optionText
 
 -- Try to read the user's choice
 readChoice :: Game s (Maybe Int)
-readChoice = liftGame $ readMaybe <$> getLine
+readChoice = readMaybe <$> input
 
 -- | Creates an action
 action :: Message -> Game s a -> Action s a
@@ -191,6 +190,18 @@ optionsUsing invRange invInt opts = let n = length opts in do
                 getGame (opts !! (v-1))
               else
                 invRange n >> options opts
+
+-- | Like options, but if the option gives Nothing, return here, but without that option
+-- If the user fails every option, the second argument action is played
+tryBranches :: Options s (Maybe a) -> Game s a -> Game s a
+tryBranches = tryBranchesUsing invalidOptionsRange invalidOptionInt
+
+-- | This is to tryBranches what optionsUsing is to options.
+tryBranchesUsing :: (Int -> Game s ()) -> Game s () -> Options s (Maybe a) -> Game s a -> Game s a
+tryBranchesUsing invRange invInt opts fallback = let n = length opts in do
+  printOptions opts
+  raw <- readChoice
+  ...
 
 -- | Read the user's input
 input :: Game s String
