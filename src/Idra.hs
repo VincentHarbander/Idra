@@ -20,6 +20,7 @@ module Idra (
 , tryBranches
 , tryBranchesUsing
 , input
+, input_
 , validInput
 , validInputM
 , validParse
@@ -222,6 +223,10 @@ tryBranchesUsing invRange invInt opts fallback = let n = length opts in do
 -- | Read the user's input
 input :: Game s String
 input = liftGame getLine
+
+-- | Read the user's input, but discard it
+input_ :: Game s ()
+input_ = input >> return ()
 
 -- | Takes a helper function that communicates what is wrong with
 -- the input message (if something is wrong).
