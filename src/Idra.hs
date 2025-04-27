@@ -17,6 +17,8 @@ module Idra (
 , action
 , options
 , optionsUsing
+, tryBranches
+, tryBranchesUsing
 , input
 , validInput
 , validInputM
@@ -186,22 +188,36 @@ optionsUsing invRange invInt opts = let n = length opts in do
   raw <- readChoice
   case raw of
     Nothing -> invInt >> options opts
-    Just v -> if inRange 1 v n then
+    Just v  -> if inRange 1 v n then
                 getGame (opts !! (v-1))
               else
-                invRange n >> options opts
+                invRange n >> optionsUsing invRange invInt opts
 
 -- | Like options, but if the option gives Nothing, return here, but without that option
 -- If the user fails every option, the second argument action is played
 tryBranches :: Options s (Maybe a) -> Game s a -> Game s a
-tryBranches = tryBranchesUsing invalidOptionsRange invalidOptionInt
+tryBranches = tryBranchesUsing invalidOptionRange invalidOptionInt
 
 -- | This is to tryBranches what optionsUsing is to options.
 tryBranchesUsing :: (Int -> Game s ()) -> Game s () -> Options s (Maybe a) -> Game s a -> Game s a
+tryBranchesUsing _ _ [] fallback = fallback
 tryBranchesUsing invRange invInt opts fallback = let n = length opts in do
   printOptions opts
   raw <- readChoice
-  ...
+  case raw of
+    Nothing -> invInt >> retry
+    Just v  -> if inRange 1 v n then
+                 do
+                   res <- getGame (opts !! (v-1))
+                   case res of
+                    Nothing -> tryBranchesUsing invRange invInt (opts `without` (v-1)) fallback
+                    Just a  -> return a
+               else
+                 invRange n >> retry
+ where retry = tryBranchesUsing invRange invInt opts fallback
+       without [] _ = []
+       without (_:xs) 0 = xs
+       without (_:xs) n = without xs (n-1)
 
 -- | Read the user's input
 input :: Game s String
