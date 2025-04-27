@@ -218,7 +218,7 @@ tryBranchesUsing invRange invInt opts fallback = let n = length opts in do
  where retry = tryBranchesUsing invRange invInt opts fallback
        without [] _ = []
        without (_:xs) 0 = xs
-       without (_:xs) n = without xs (n-1)
+       without (x:xs) n = x : without xs (n-1)
 
 -- | Read the user's input
 input :: Game s String
