@@ -65,6 +65,9 @@ type Input = String
 -- from trying to access the file.
 data IdraException = ParseFailure | IOExc IOException
 
+instance Functor (Action s) where
+  fmap f act = act{getGame=f <$> getGame act}
+
 instance Functor Idra where
   fmap f (Idra ma) = Idra (fmap f <$> ma)
 
@@ -86,7 +89,6 @@ instance Semigroup a => Semigroup (Game s a) where
 
 instance Monoid a => Monoid (Game s a) where
   mempty = return mempty
-
 
 -- | MonadIdra provides the service of ending the game.
 -- It is not defined exclusively for Game since one may want
