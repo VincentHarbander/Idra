@@ -222,11 +222,14 @@ tryBranchesUsing invRange invInt opts fallback = let n = length opts in do
 
 -- | Read the user's input
 input :: Game s String
-input = liftGame getLine
+input = do
+  res <- liftGame getLine
+  message "" -- Put newline after user input
+  return res
 
 -- | Read the user's input, but discard it
 input_ :: Game s ()
-input_ = input >> return ()
+input_ = void input >> return ()
 
 -- | Takes a helper function that communicates what is wrong with
 -- the input message (if something is wrong).
