@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | A composable, monadic and ergonomic EDSL for text RPG games in Haskell
@@ -42,6 +44,40 @@ import Control.Monad.State (MonadState, StateT, evalStateT, get, put)
 import Data.List (intercalate)
 import Text.Read (readMaybe)
 import Test.QuickCheck (Gen, generate)
+
+#ifdef mingw32_HOST_OS
+import Data.Word (Word32)
+import Foreign.Ptr (Ptr, castPtr, nullPtr)
+import Foreign.C.Types (CWchar)
+import Foreign.Marshal.Alloc (alloca)
+import System.Win32.Types (BOOL, HANDLE)
+import Graphics.Win32.Misc (getStdHandle, sTD_OUTPUT_HANDLE)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import qualified Data.ByteString as BS
+
+foreign import stdcall unsafe "windows.h WriteConsoleW"
+  c_WriteConsoleW :: HANDLE -> Ptr CWchar -> Word32 -> Ptr Word32 -> Ptr () -> IO BOOL
+
+writeConsole :: String -> IO ()
+writeConsole str = do
+  handle <- getStdHandle sTD_OUTPUT_HANDLE
+  let utf16le = TE.encodeUtf16LE (T.pack str)
+      charCount = fromIntegral (BS.length utf16le `div` 2)
+  BS.useAsCString utf16le $ \ptr ->
+    alloca $ \written -> do
+      _ <- c_WriteConsoleW handle (castPtr ptr) charCount written nullPtr
+      return ()
+
+writeConsoleLn :: String -> IO ()
+writeConsoleLn str = writeConsole (str ++ "\n")
+#else
+writeConsole :: String -> IO ()
+writeConsole = putStr
+
+writeConsoleLn :: String -> IO ()
+writeConsoleLn = putStrLn
+#endif
 
 newtype Idra a = Idra {unIdra :: IO (Maybe a)}
 -- | The monad of the module. Represents a game with game state of type s
@@ -138,11 +174,11 @@ liftGame = idraToGame . liftIdra
 -- Does not appear until the user has entered their
 -- input unless a message producing a newline comes after.
 message' :: Message -> Game s ()
-message' = liftGame . putStr
+message' = liftGame . writeConsole
 
 -- | Prints a message
 message :: Message -> Game s ()
-message = liftGame . putStrLn
+message = liftGame . writeConsoleLn
 
 -- | Prints a system message, not "in narrative",
 -- but gives information to the player.
