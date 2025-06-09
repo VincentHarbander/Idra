@@ -22,7 +22,9 @@ module Idra (
 , tryBranches
 , tryBranchesUsing
 , input
+, inputUsing
 , input_
+, inputUsing_
 , validInput
 , validInputM
 , validParse
@@ -194,6 +196,10 @@ invalidOptionInt = systemMessage "The input should be an integer"
 invalidOptionRange :: Int -> Game s ()
 invalidOptionRange n = systemMessage $ "Options can only be between 1 and " ++ show n
 
+-- Print IO error
+invalidIOError :: Game s ()
+invalidIOError = systemMessage "IO error encountered. Please try again."
+
 -- Pretty print the user's available options
 printOptions :: Options s a -> Game s ()
 printOptions opts = message optionText
@@ -256,16 +262,31 @@ tryBranchesUsing invRange invInt opts fallback = let n = length opts in do
        without (_:xs) 0 = xs
        without (x:xs) n = x : without xs (n-1)
 
--- | Read the user's input
-input :: Game s String
-input = do
-  res <- liftGame getLine
+-- | Safely read the user's input. Provide a custom feedback message to the user upon an IOError to encourage them to retry.
+inputUsing :: Game s () -> Game s Input
+inputUsing failIOError = do
+  inp <- helper
   message "" -- Put newline after user input
-  return res
+  return inp
+ where helper = do
+         res <- liftGame $ tryIO getLine
+         case res of
+           Left _ -> do
+             failIOError
+             helper
+           Right str -> return str
 
--- | Read the user's input, but discard it
+-- | Just like inputUsing, but discard the result
+inputUsing_ :: Game s () -> Game s ()
+inputUsing_ failIOError = void $ inputUsing failIOError
+
+-- | Read the user's input. A fail-safe getLine in the Game monad.
+input :: Game s Input
+input = inputUsing invalidIOError
+
+-- | Read the user's input safely, but discard it.
 input_ :: Game s ()
-input_ = void input >> return ()
+input_ = void input
 
 -- | Takes a helper function that communicates what is wrong with
 -- the input message (if something is wrong).
