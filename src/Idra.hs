@@ -271,8 +271,9 @@ inputUsing failIOError = do
  where helper = do
          res <- liftGame $ tryIO getLine
          case res of
-           Left _ -> do
+           Left err -> do
              failIOError
+             systemMessage $ show err
              helper
            Right str -> return str
 
