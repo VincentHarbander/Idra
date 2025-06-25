@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -Wunsupported-calling-conventions #-}
 
 -- | A composable, monadic and ergonomic EDSL for text RPG games in Haskell
 module Idra (
