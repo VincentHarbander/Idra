@@ -274,7 +274,7 @@ inputUsing failIOError = do
            Left err -> do
              failIOError
              systemMessage $ show err
-             helper
+             return ""
            Right str -> return str
 
 -- | Just like inputUsing, but discard the result
